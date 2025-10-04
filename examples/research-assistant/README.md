@@ -24,7 +24,7 @@ An intelligent research assistant powered by LangChain and Anthropic's Claude th
 1. **Clone the repository**
 
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/emptyfist/prompt-research
    cd chatbot
    ```
 
