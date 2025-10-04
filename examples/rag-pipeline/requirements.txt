@@ -1,0 +1,7 @@
+langchain
+langchain-openai
+langchain-anthropic
+langchain-community
+faiss-cpu
+openai
+anthropic
