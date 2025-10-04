@@ -1,53 +1,32 @@
-from dotenv import load_dotenv
-from pydantic import BaseModel
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain.agents import create_tool_calling_agent, AgentExecutor
-from tools import search_tool, wiki_tool, save_tool
+from langchain.chains import RetrievalQA
+from langchain_core.documents import Document
 
 load_dotenv()
 
-class ResearchResponse(BaseModel):
-  top: str
-  summary: str
-  source: list[str]
-  tools_used: list[str]
+# 1. Initialize embeddings + Claude LLM
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+llm = ChatAnthropic(model="claude-3-sonnet-20240229", temperature=0)
 
-llm = ChatAnthropic(model="claude-sonnet-4-5-20250929")
-parser = PydanticOutputParser(pydantic_object=ResearchResponse)
+# 2. Example documents
+docs = [
+    Document(page_content="The Eiffel Tower is located in Paris, France."),
+    Document(page_content="The Great Wall of China is visible from space only under special conditions."),
+    Document(page_content="LayerZero is an interoperability protocol for blockchains."),
+]
 
-prompt = ChatPromptTemplate.from_messages(
-  [
-    (
-      "system",
-      """
-      You are a research assistant that will help generate a research paper.
-      Answer the user query and use neccessary tools. 
-      Wrap the output in this format and provide no other text\n{format_instructions}
-      """,
-    ),
-    ("placeholder", "{chat_history}"),
-    ("human", "{query}"),
-    ("placeholder", "{agent_scratchpad}"),
-  ]
-).partial(format_instructions=parser.get_format_instructions())
+# 3. Build FAISS vectorstore
+db = FAISS.from_documents(docs, embeddings)
 
-tools = [search_tool, wiki_tool, save_tool]
-agent = create_tool_calling_agent(
-  llm=llm, 
-  prompt=prompt, 
-  tools=tools
-)
+# 4. Setup retriever + RAG pipeline
+retriever = db.as_retriever()
+qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-query = input("How can I help you with your research?")
-raw_response = agent_executor.invoke({"query": query})
+# 5. Run a query
+query = "Where is the Eiffel Tower?"
+response = qa.run(query)
 
-# print(raw_response)
-
-try:
-  structured_response = parser.parse(raw_response.get("output")[0]["text"])
-  print(structured_response)
-except Exception as e:
-  print("Error parsing response: ", e, "Raw response: ", raw_response)
+print("Q:", query)
+print("A:", response)
