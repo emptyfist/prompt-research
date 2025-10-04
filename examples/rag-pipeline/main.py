@@ -3,6 +3,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_anthropic import ChatAnthropic
 from langchain.chains import RetrievalQA
 from langchain_core.documents import Document
+from dotenv import load_dotenv
 
 load_dotenv()
 
